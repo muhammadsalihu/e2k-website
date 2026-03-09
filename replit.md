@@ -59,3 +59,22 @@ shared/
 
 ## Payments
 Currently uses an internal coin system (no external payment gateway). Coins can be purchased and used for gifts and subscriptions. External payment integration (Paystack, PayPal) can be added later.
+
+## Security
+- `sanitizeUser()` helper in server/routes.ts strips password hashes from all API responses
+- PATCH /api/users/me validates displayName (1-50 chars), bio (max 500 chars), avatar (non-empty)
+- Route ordering: /api/users/search and /api/users/me must come before /api/users/:id
+
+## Real-time Features
+- WebSocket at /ws path with auto-reconnection (exponential backoff, max 10s)
+- Connection status indicator shown during reconnection
+- Chat message send gated on WebSocket readyState === OPEN
+
+## Key Implementation Notes
+- `apiRequest(method, url, data)` — method, url, data order
+- Category filtering on home page via selectedCategory state
+- User search on friends page with 300ms debounce (useRef-based timer)
+- End stream button visible only to stream host, invalidates stream caches
+- Share button copies stream URL to clipboard with error handling
+- Profile edit dialog on own profile page
+- Seed data: musicqueen/demo123, gamerpro/demo123

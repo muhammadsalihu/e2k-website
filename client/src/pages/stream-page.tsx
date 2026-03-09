@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useToast } from "@/hooks/use-toast";
 import {
   Radio, Users, Heart, Gift as GiftIcon, Send, UserPlus, Video,
-  Share2, MoreVertical, Crown, Coins, X, MessageCircle
+  Share2, MoreVertical, Crown, Coins, X, MessageCircle, PhoneOff, WifiOff
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -118,37 +118,77 @@ export default function StreamPage() {
     },
   });
 
+  const endStreamMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/streams/${streamId}/end`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/streams"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/streams", streamId] });
+      toast({ title: "Stream ended" });
+      setLocation("/");
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to end stream", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const [wsConnected, setWsConnected] = useState(false);
+
   useEffect(() => {
     if (!streamId || !user) return;
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
-    wsRef.current = ws;
+    let reconnectAttempts = 0;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let isClosed = false;
 
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ type: "join_stream", streamId, userId: user.id }));
-    };
+    function connect() {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+      wsRef.current = ws;
 
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === "chat_message") {
-          if (String(data.payload.userId) !== String(user.id)) {
-            setChatMessages((prev) => [...prev, data.payload]);
+      ws.onopen = () => {
+        reconnectAttempts = 0;
+        setWsConnected(true);
+        ws.send(JSON.stringify({ type: "join_stream", streamId, userId: user.id }));
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "chat_message") {
+            if (String(data.payload.userId) !== String(user.id)) {
+              setChatMessages((prev) => [...prev, data.payload]);
+            }
+          } else if (data.type === "gift_sent") {
+            const newFlying = { id: Date.now().toString(), icon: data.payload.giftIcon, name: data.payload.giftName };
+            setFlyingGifts((prev) => [...prev, newFlying]);
+            setTimeout(() => {
+              setFlyingGifts((prev) => prev.filter((g) => g.id !== newFlying.id));
+            }, 2000);
+          } else if (data.type === "viewer_update") {
+            queryClient.invalidateQueries({ queryKey: ["/api/streams", streamId] });
           }
-        } else if (data.type === "gift_sent") {
-          const newFlying = { id: Date.now().toString(), icon: data.payload.giftIcon, name: data.payload.giftName };
-          setFlyingGifts((prev) => [...prev, newFlying]);
-          setTimeout(() => {
-            setFlyingGifts((prev) => prev.filter((g) => g.id !== newFlying.id));
-          }, 2000);
-        } else if (data.type === "viewer_update") {
-          queryClient.invalidateQueries({ queryKey: ["/api/streams", streamId] });
+        } catch {}
+      };
+
+      ws.onclose = () => {
+        setWsConnected(false);
+        wsRef.current = null;
+        if (!isClosed) {
+          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000);
+          reconnectAttempts++;
+          reconnectTimer = setTimeout(connect, delay);
         }
-      } catch {}
-    };
+      };
+    }
+
+    connect();
 
     return () => {
-      ws.close();
+      isClosed = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      wsRef.current?.close();
     };
   }, [streamId, user]);
 
@@ -158,6 +198,10 @@ export default function StreamPage() {
 
   const sendChat = () => {
     if (!chatInput.trim() || !wsRef.current || !user) return;
+    if (wsRef.current.readyState !== WebSocket.OPEN) {
+      toast({ title: "Reconnecting...", description: "Please try again in a moment", variant: "destructive" });
+      return;
+    }
     const msgPayload = {
       id: Date.now().toString(),
       userId: user.id,
@@ -211,6 +255,12 @@ export default function StreamPage() {
               <Users className="w-3 h-3 mr-1" />
               {stream.viewerCount}
             </Badge>
+            {!wsConnected && (
+              <Badge variant="secondary" className="bg-yellow-500/80 text-white border-0 text-xs" data-testid="badge-reconnecting">
+                <WifiOff className="w-3 h-3 mr-1" />
+                Reconnecting...
+              </Badge>
+            )}
           </div>
 
           <AnimatePresence>
@@ -244,7 +294,18 @@ export default function StreamPage() {
                 <p className="text-white/70 text-xs">{stream.host?.displayName}</p>
               </div>
               <div className="flex gap-2">
-                {stream.hostId !== user?.id && (
+                {stream.hostId === user?.id ? (
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => endStreamMutation.mutate()}
+                    disabled={endStreamMutation.isPending}
+                    data-testid="button-end-stream"
+                  >
+                    <PhoneOff className="w-4 h-4 mr-1" />
+                    End
+                  </Button>
+                ) : (
                   <>
                     <Button
                       size="icon"
@@ -260,7 +321,20 @@ export default function StreamPage() {
                     </Button>
                   </>
                 )}
-                <Button size="icon" variant="ghost" className="bg-black/40 text-white" data-testid="button-share">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="bg-black/40 text-white"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(window.location.href);
+                      toast({ title: "Link copied to clipboard!" });
+                    } catch {
+                      toast({ title: "Could not copy link", variant: "destructive" });
+                    }
+                  }}
+                  data-testid="button-share"
+                >
                   <Share2 className="w-4 h-4" />
                 </Button>
               </div>

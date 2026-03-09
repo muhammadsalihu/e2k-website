@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
@@ -17,6 +18,7 @@ interface StreamWithHost extends Stream {
 export default function HomePage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const [selectedCategory, setSelectedCategory] = useState("All");
 
   const { data: streams, isLoading: streamsLoading } = useQuery<StreamWithHost[]>({
     queryKey: ["/api/streams"],
@@ -26,7 +28,9 @@ export default function HomePage() {
     queryKey: ["/api/users/top"],
   });
 
-  const liveStreams = streams?.filter((s) => s.status === "live") || [];
+  const liveStreams = (streams?.filter((s) => s.status === "live") || []).filter(
+    (s) => selectedCategory === "All" || s.category === selectedCategory
+  );
   const categories = ["All", "Entertainment", "Music", "Gaming", "Talk Show", "Dance", "Cooking"];
 
   return (
@@ -67,8 +71,9 @@ export default function HomePage() {
           {categories.map((cat) => (
             <Button
               key={cat}
-              variant={cat === "All" ? "default" : "secondary"}
+              variant={cat === selectedCategory ? "default" : "secondary"}
               size="sm"
+              onClick={() => setSelectedCategory(cat)}
               data-testid={`button-category-${cat.toLowerCase()}`}
             >
               {cat}

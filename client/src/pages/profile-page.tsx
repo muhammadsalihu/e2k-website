@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useRoute, useLocation } from "wouter";
@@ -8,10 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft, Crown, Coins, Users, UserPlus, UserCheck, Radio,
-  Settings, LogOut, ShoppingBag
+  Settings, LogOut, ShoppingBag, Pencil
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -41,6 +46,36 @@ export default function ProfilePage() {
   const { data: friendStatus } = useQuery<{ status: string }>({
     queryKey: ["/api/friends/status", profileId],
     enabled: !!profileId && !isOwnProfile,
+  });
+
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editDisplayName, setEditDisplayName] = useState("");
+  const [editBio, setEditBio] = useState("");
+  const [editAvatar, setEditAvatar] = useState("");
+
+  function openEditDialog() {
+    if (profile) {
+      setEditDisplayName(profile.displayName);
+      setEditBio(profile.bio || "");
+      setEditAvatar(profile.avatar);
+    }
+    setEditDialogOpen(true);
+  }
+
+  const updateProfileMutation = useMutation({
+    mutationFn: async (data: { displayName?: string; bio?: string; avatar?: string }) => {
+      const res = await apiRequest("PATCH", "/api/users/me", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users", profileId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      setEditDialogOpen(false);
+      toast({ title: "Profile updated!" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to update profile", description: error.message, variant: "destructive" });
+    },
   });
 
   const addFriendMutation = useMutation({
@@ -148,6 +183,10 @@ export default function ProfilePage() {
               <div className="flex gap-2 flex-wrap justify-center">
                 {isOwnProfile ? (
                   <>
+                    <Button variant="secondary" onClick={openEditDialog} data-testid="button-edit-profile">
+                      <Pencil className="w-4 h-4 mr-2" />
+                      Edit Profile
+                    </Button>
                     <Button variant="secondary" onClick={() => setLocation("/shop")} data-testid="button-shop">
                       <ShoppingBag className="w-4 h-4 mr-2" />
                       Shop
@@ -225,6 +264,82 @@ export default function ProfilePage() {
           </section>
         )}
       </div>
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Profile</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              updateProfileMutation.mutate({
+                displayName: editDisplayName,
+                bio: editBio,
+                avatar: editAvatar,
+              });
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="edit-display-name">Display Name</Label>
+              <Input
+                id="edit-display-name"
+                data-testid="input-edit-display-name"
+                value={editDisplayName}
+                onChange={(e) => setEditDisplayName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-bio">Bio</Label>
+              <Textarea
+                id="edit-bio"
+                data-testid="input-edit-bio"
+                value={editBio}
+                onChange={(e) => setEditBio(e.target.value)}
+                className="resize-none"
+                rows={3}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-avatar">Avatar URL</Label>
+              <Input
+                id="edit-avatar"
+                data-testid="input-edit-avatar"
+                value={editAvatar}
+                onChange={(e) => setEditAvatar(e.target.value)}
+                required
+              />
+              {editAvatar && (
+                <div className="flex justify-center pt-2">
+                  <Avatar className="w-16 h-16">
+                    <AvatarImage src={editAvatar} alt="Preview" />
+                    <AvatarFallback>{editDisplayName?.[0] || "?"}</AvatarFallback>
+                  </Avatar>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditDialogOpen(false)}
+                data-testid="button-cancel-edit"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={updateProfileMutation.isPending}
+                data-testid="button-save-profile"
+              >
+                {updateProfileMutation.isPending ? "Saving..." : "Save"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

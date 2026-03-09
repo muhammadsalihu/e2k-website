@@ -1,4 +1,4 @@
-import { eq, and, or, desc } from "drizzle-orm";
+import { eq, and, or, desc, ilike } from "drizzle-orm";
 import { db } from "./db";
 import {
   users, streams, gifts, giftTransactions, coinPackages,
@@ -36,6 +36,8 @@ export interface IStorage {
   getFriendById(id: string): Promise<Friend | undefined>;
   createFriendRequest(userId: string, friendId: string): Promise<Friend>;
   updateFriendStatus(id: string, status: "accepted" | "rejected"): Promise<Friend | undefined>;
+
+  searchUsers(query: string): Promise<User[]>;
 
   addCoHost(streamId: string, userId: string): Promise<StreamCoHost>;
   getCoHosts(streamId: string): Promise<(StreamCoHost & { user?: User })[]>;
@@ -187,6 +189,15 @@ export class DatabaseStorage implements IStorage {
   async updateFriendStatus(id: string, status: "accepted" | "rejected"): Promise<Friend | undefined> {
     const [updated] = await db.update(friends).set({ status }).where(eq(friends.id, id)).returning();
     return updated;
+  }
+
+  async searchUsers(query: string): Promise<User[]> {
+    return db.select().from(users).where(
+      or(
+        ilike(users.username, `%${query}%`),
+        ilike(users.displayName, `%${query}%`)
+      )
+    ).limit(20);
   }
 
   async addCoHost(streamId: string, userId: string): Promise<StreamCoHost> {

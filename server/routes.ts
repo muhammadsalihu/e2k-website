@@ -12,6 +12,11 @@ function hashPassword(password: string): string {
   return crypto.createHash("sha256").update(password).digest("hex");
 }
 
+function sanitizeUser(user: any) {
+  const { password, ...safe } = user;
+  return safe;
+}
+
 declare module "express-session" {
   interface SessionData {
     userId: string;
@@ -119,8 +124,8 @@ export async function registerRoutes(
   });
 
   app.get("/api/streams", async (_req: Request, res: Response) => {
-    const streams = await storage.getStreams();
-    res.json(streams);
+    const allStreams = await storage.getStreams();
+    res.json(allStreams.map(s => ({ ...s, host: s.host ? sanitizeUser(s.host) : undefined })));
   });
 
   app.get("/api/streams/:id", async (req: Request, res: Response) => {
@@ -128,7 +133,7 @@ export async function registerRoutes(
     if (!stream) {
       return res.status(404).json({ message: "Stream not found" });
     }
-    res.json(stream);
+    res.json({ ...stream, host: stream.host ? sanitizeUser(stream.host) : undefined });
   });
 
   app.post("/api/streams", requireAuth, async (req: Request, res: Response) => {
@@ -287,13 +292,58 @@ export async function registerRoutes(
     res.json(safeUsers);
   });
 
+  app.get("/api/users/search", async (req: Request, res: Response) => {
+    const q = (req.query.q as string || "").trim();
+    if (!q) {
+      return res.json([]);
+    }
+    const results = await storage.searchUsers(q);
+    res.json(results.map(u => sanitizeUser(u)));
+  });
+
+  app.patch("/api/users/me", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { displayName, bio, avatar } = req.body;
+      const updates: Record<string, any> = {};
+      if (displayName !== undefined) {
+        const trimmed = String(displayName).trim();
+        if (trimmed.length === 0 || trimmed.length > 50) {
+          return res.status(400).json({ message: "Display name must be 1-50 characters" });
+        }
+        updates.displayName = trimmed;
+      }
+      if (bio !== undefined) {
+        updates.bio = String(bio).slice(0, 500);
+      }
+      if (avatar !== undefined) {
+        const trimmedAvatar = String(avatar).trim();
+        if (trimmedAvatar.length === 0) {
+          return res.status(400).json({ message: "Avatar cannot be empty" });
+        }
+        updates.avatar = trimmedAvatar;
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ message: "No fields to update" });
+      }
+
+      const updated = await storage.updateUser(userId, updates);
+      if (!updated) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.json(sanitizeUser(updated));
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/users/:id", async (req: Request, res: Response) => {
     const user = await storage.getUser(req.params.id);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    const { password: _, ...safeUser } = user;
-    res.json(safeUser);
+    res.json(sanitizeUser(user));
   });
 
   app.get("/api/users/:id/streams", async (req: Request, res: Response) => {
@@ -303,12 +353,20 @@ export async function registerRoutes(
 
   app.get("/api/friends", requireAuth, async (req: Request, res: Response) => {
     const friendsList = await storage.getFriends(req.session.userId!);
-    res.json(friendsList);
+    res.json(friendsList.map(f => ({
+      ...f,
+      user: f.user ? sanitizeUser(f.user) : undefined,
+      friend: f.friend ? sanitizeUser(f.friend) : undefined,
+    })));
   });
 
   app.get("/api/friends/pending", requireAuth, async (req: Request, res: Response) => {
     const pending = await storage.getPendingFriendRequests(req.session.userId!);
-    res.json(pending);
+    res.json(pending.map(f => ({
+      ...f,
+      user: f.user ? sanitizeUser(f.user) : undefined,
+      friend: f.friend ? sanitizeUser(f.friend) : undefined,
+    })));
   });
 
   app.get("/api/friends/status/:friendId", requireAuth, async (req: Request, res: Response) => {
