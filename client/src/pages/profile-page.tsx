@@ -8,7 +8,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft, Crown, Coins, Users, UserPlus, UserCheck, Radio,
-  Settings, LogOut, ShoppingBag, Pencil
+  LogOut, ShoppingBag, Pencil, Star, Bell, BellOff
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -48,22 +47,43 @@ export default function ProfilePage() {
     enabled: !!profileId && !isOwnProfile,
   });
 
+  const { data: channelSubStatus } = useQuery<{ subscribed: boolean }>({
+    queryKey: ["/api/channel", profileId, "subscription"],
+    enabled: !!profileId && !isOwnProfile,
+  });
+
+  const { data: subscriberCount } = useQuery<{ count: number }>({
+    queryKey: ["/api/channel", profileId, "subscribers"],
+    enabled: !!profileId,
+  });
+
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editDisplayName, setEditDisplayName] = useState("");
   const [editBio, setEditBio] = useState("");
   const [editAvatar, setEditAvatar] = useState("");
+  const [editChannelPrice, setEditChannelPrice] = useState("0");
+  const [priceDialogOpen, setPriceDialogOpen] = useState(false);
+  const [newChannelPrice, setNewChannelPrice] = useState("0");
 
   function openEditDialog() {
     if (profile) {
       setEditDisplayName(profile.displayName);
       setEditBio(profile.bio || "");
       setEditAvatar(profile.avatar);
+      setEditChannelPrice(String(profile.channelPrice || 0));
     }
     setEditDialogOpen(true);
   }
 
+  function openPriceDialog() {
+    if (profile) {
+      setNewChannelPrice(String(profile.channelPrice || 0));
+    }
+    setPriceDialogOpen(true);
+  }
+
   const updateProfileMutation = useMutation({
-    mutationFn: async (data: { displayName?: string; bio?: string; avatar?: string }) => {
+    mutationFn: async (data: { displayName?: string; bio?: string; avatar?: string; channelPrice?: number }) => {
       const res = await apiRequest("PATCH", "/api/users/me", data);
       return res.json();
     },
@@ -71,6 +91,7 @@ export default function ProfilePage() {
       queryClient.invalidateQueries({ queryKey: ["/api/users", profileId] });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       setEditDialogOpen(false);
+      setPriceDialogOpen(false);
       toast({ title: "Profile updated!" });
     },
     onError: (error: any) => {
@@ -89,6 +110,37 @@ export default function ProfilePage() {
     },
     onError: (error: any) => {
       toast({ title: "Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const subscribeMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/channel/${profileId}/subscribe`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/channel", profileId, "subscription"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/channel", profileId, "subscribers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      toast({ title: "Subscribed to channel!" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to subscribe", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const unsubscribeMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/channel/${profileId}/unsubscribe`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/channel", profileId, "subscription"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/channel", profileId, "subscribers"] });
+      toast({ title: "Unsubscribed from channel" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to unsubscribe", description: error.message, variant: "destructive" });
     },
   });
 
@@ -169,6 +221,10 @@ export default function ProfilePage() {
                   <p className="text-lg font-bold" data-testid="text-following">{profile.following}</p>
                   <p className="text-xs text-muted-foreground">Following</p>
                 </div>
+                <div className="text-center">
+                  <p className="text-lg font-bold" data-testid="text-subscribers">{subscriberCount?.count || 0}</p>
+                  <p className="text-xs text-muted-foreground">Subscribers</p>
+                </div>
                 {isOwnProfile && (
                   <div className="text-center">
                     <p className="text-lg font-bold flex items-center gap-1">
@@ -186,6 +242,10 @@ export default function ProfilePage() {
                     <Button variant="secondary" onClick={openEditDialog} data-testid="button-edit-profile">
                       <Pencil className="w-4 h-4 mr-2" />
                       Edit Profile
+                    </Button>
+                    <Button variant="secondary" onClick={openPriceDialog} data-testid="button-set-channel-price">
+                      <Coins className="w-4 h-4 mr-2" />
+                      Sub Price: {profile.channelPrice || "Free"}
                     </Button>
                     <Button variant="secondary" onClick={() => setLocation("/shop")} data-testid="button-shop">
                       <ShoppingBag className="w-4 h-4 mr-2" />
@@ -219,6 +279,28 @@ export default function ProfilePage() {
                       >
                         <UserPlus className="w-4 h-4 mr-2" />
                         Add Friend
+                      </Button>
+                    )}
+
+                    {channelSubStatus?.subscribed ? (
+                      <Button
+                        variant="secondary"
+                        onClick={() => unsubscribeMutation.mutate()}
+                        disabled={unsubscribeMutation.isPending}
+                        data-testid="button-unsubscribe"
+                      >
+                        <BellOff className="w-4 h-4 mr-2" />
+                        Unsubscribe
+                      </Button>
+                    ) : (
+                      <Button
+                        className="gradient-primary"
+                        onClick={() => subscribeMutation.mutate()}
+                        disabled={subscribeMutation.isPending}
+                        data-testid="button-subscribe"
+                      >
+                        <Star className="w-4 h-4 mr-2" />
+                        Subscribe {profile.channelPrice > 0 ? `(${profile.channelPrice} coins)` : "(Free)"}
                       </Button>
                     )}
                   </>
@@ -277,6 +359,7 @@ export default function ProfilePage() {
                 displayName: editDisplayName,
                 bio: editBio,
                 avatar: editAvatar,
+                channelPrice: Number(editChannelPrice),
               });
             }}
             className="space-y-4"
@@ -320,6 +403,19 @@ export default function ProfilePage() {
                 </div>
               )}
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-channel-price">Channel Subscription Price (coins)</Label>
+              <Input
+                id="edit-channel-price"
+                data-testid="input-edit-channel-price"
+                type="number"
+                min="0"
+                max="100000"
+                value={editChannelPrice}
+                onChange={(e) => setEditChannelPrice(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">Set to 0 for free subscriptions</p>
+            </div>
             <div className="flex justify-end gap-2">
               <Button
                 type="button"
@@ -335,6 +431,55 @@ export default function ProfilePage() {
                 data-testid="button-save-profile"
               >
                 {updateProfileMutation.isPending ? "Saving..." : "Save"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={priceDialogOpen} onOpenChange={setPriceDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Set Channel Subscription Price</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              updateProfileMutation.mutate({
+                channelPrice: Number(newChannelPrice),
+              });
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="new-channel-price">Price in Coins</Label>
+              <Input
+                id="new-channel-price"
+                data-testid="input-channel-price"
+                type="number"
+                min="0"
+                max="100000"
+                value={newChannelPrice}
+                onChange={(e) => setNewChannelPrice(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Users will pay this many coins to subscribe to your channel. Set to 0 for free.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setPriceDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={updateProfileMutation.isPending}
+                data-testid="button-save-channel-price"
+              >
+                {updateProfileMutation.isPending ? "Saving..." : "Save Price"}
               </Button>
             </div>
           </form>

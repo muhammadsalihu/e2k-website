@@ -7,6 +7,7 @@ import crypto from "crypto";
 import { storage } from "./storage";
 import { pool } from "./db";
 import { seedDatabase } from "./seed";
+import { isLiveKitConfigured, getLiveKitUrl, createLiveKitToken } from "./livekit";
 
 function hashPassword(password: string): string {
   return crypto.createHash("sha256").update(password).digest("hex");
@@ -304,7 +305,7 @@ export async function registerRoutes(
   app.patch("/api/users/me", requireAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;
-      const { displayName, bio, avatar } = req.body;
+      const { displayName, bio, avatar, channelPrice } = req.body;
       const updates: Record<string, any> = {};
       if (displayName !== undefined) {
         const trimmed = String(displayName).trim();
@@ -322,6 +323,13 @@ export async function registerRoutes(
           return res.status(400).json({ message: "Avatar cannot be empty" });
         }
         updates.avatar = trimmedAvatar;
+      }
+      if (channelPrice !== undefined) {
+        const priceNum = Number(channelPrice);
+        if (isNaN(priceNum) || priceNum < 0 || priceNum > 100000) {
+          return res.status(400).json({ message: "Channel price must be between 0 and 100000 coins" });
+        }
+        updates.channelPrice = Math.floor(priceNum);
       }
 
       if (Object.keys(updates).length === 0) {
@@ -422,6 +430,128 @@ export async function registerRoutes(
       }
       const updated = await storage.updateFriendStatus(req.params.id, "rejected");
       res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/livekit/config", (_req: Request, res: Response) => {
+    res.json({
+      configured: isLiveKitConfigured(),
+      url: getLiveKitUrl(),
+    });
+  });
+
+  app.post("/api/livekit/token", requireAuth, async (req: Request, res: Response) => {
+    try {
+      if (!isLiveKitConfigured()) {
+        return res.status(503).json({ message: "LiveKit is not configured" });
+      }
+      const { streamId } = req.body;
+      if (!streamId) {
+        return res.status(400).json({ message: "streamId is required" });
+      }
+      const userId = req.session.userId!;
+      const stream = await storage.getStream(streamId);
+      if (!stream || stream.status !== "live") {
+        return res.status(404).json({ message: "Live stream not found" });
+      }
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      const isHost = stream.hostId === userId;
+      const token = await createLiveKitToken(
+        `stream-${streamId}`,
+        userId,
+        user.displayName,
+        isHost
+      );
+      res.json({ token, url: getLiveKitUrl() });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/channel/:channelId/subscription", requireAuth, async (req: Request, res: Response) => {
+    const sub = await storage.getChannelSubscription(req.session.userId!, req.params.channelId);
+    res.json({ subscribed: !!sub });
+  });
+
+  app.get("/api/channel/:channelId/subscribers", async (req: Request, res: Response) => {
+    const subs = await storage.getChannelSubscribers(req.params.channelId);
+    res.json({ count: subs.length });
+  });
+
+  app.post("/api/channel/:channelId/subscribe", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const channelId = req.params.channelId;
+
+      if (userId === channelId) {
+        return res.status(400).json({ message: "Cannot subscribe to your own channel" });
+      }
+
+      const existing = await storage.getChannelSubscription(userId, channelId);
+      if (existing) {
+        return res.status(400).json({ message: "Already subscribed" });
+      }
+
+      const channel = await storage.getUser(channelId);
+      if (!channel) {
+        return res.status(404).json({ message: "Channel not found" });
+      }
+
+      if (channel.channelPrice > 0) {
+        const subscriber = await storage.getUser(userId);
+        if (!subscriber) {
+          return res.status(404).json({ message: "User not found" });
+        }
+        if (subscriber.coins < channel.channelPrice) {
+          return res.status(400).json({ message: "Not enough coins" });
+        }
+
+        await pool.query("BEGIN");
+        try {
+          await storage.updateUser(userId, { coins: subscriber.coins - channel.channelPrice });
+          await storage.updateUser(channelId, { coins: channel.coins + channel.channelPrice });
+          const sub = await storage.createChannelSubscription(userId, channelId);
+          await pool.query("COMMIT");
+          return res.json(sub);
+        } catch (txErr) {
+          await pool.query("ROLLBACK");
+          throw txErr;
+        }
+      }
+
+      const sub = await storage.createChannelSubscription(userId, channelId);
+      res.json(sub);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/channel/:channelId/unsubscribe", requireAuth, async (req: Request, res: Response) => {
+    try {
+      await storage.deleteChannelSubscription(req.session.userId!, req.params.channelId);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.patch("/api/channel/price", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { price } = req.body;
+      const priceNum = Number(price);
+      if (isNaN(priceNum) || priceNum < 0 || priceNum > 100000) {
+        return res.status(400).json({ message: "Price must be between 0 and 100000 coins" });
+      }
+      const updated = await storage.updateUser(req.session.userId!, { channelPrice: Math.floor(priceNum) });
+      if (!updated) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.json(sanitizeUser(updated));
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }

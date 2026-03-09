@@ -18,6 +18,7 @@ export const users = pgTable("users", {
   coins: integer("coins").default(100).notNull(),
   subscriptionTier: subscriptionTierEnum("subscription_tier").default("free").notNull(),
   isStreaming: boolean("is_streaming").default(false).notNull(),
+  channelPrice: integer("channel_price").default(0).notNull(),
   followers: integer("followers").default(0).notNull(),
   following: integer("following").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -80,6 +81,13 @@ export const friends = pgTable("friends", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const channelSubscriptions = pgTable("channel_subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  subscriberId: varchar("subscriber_id").notNull().references(() => users.id),
+  channelId: varchar("channel_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const streamCoHosts = pgTable("stream_co_hosts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   streamId: varchar("stream_id").notNull().references(() => streams.id),
@@ -138,5 +146,6 @@ export type GiftTransaction = typeof giftTransactions.$inferSelect;
 export type CoinPackage = typeof coinPackages.$inferSelect;
 export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
 export type Friend = typeof friends.$inferSelect;
+export type ChannelSubscription = typeof channelSubscriptions.$inferSelect;
 export type StreamCoHost = typeof streamCoHosts.$inferSelect;
 export type ChatMessage = typeof chatMessages.$inferSelect;

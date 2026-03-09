@@ -10,13 +10,13 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   Radio, Users, Heart, Gift as GiftIcon, Send, UserPlus, Video,
-  Share2, MoreVertical, Crown, Coins, X, MessageCircle, PhoneOff, WifiOff
+  Share2, Crown, Coins, X, MessageCircle, PhoneOff, WifiOff, VideoOff
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { LiveKitStream } from "@/components/livekit-room";
 
 interface StreamWithHost extends Stream {
   host?: User;
@@ -44,6 +44,8 @@ export default function StreamPage() {
   const [flyingGifts, setFlyingGifts] = useState<{ id: string; icon: string; name: string }[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const [lkToken, setLkToken] = useState<string | null>(null);
+  const [lkUrl, setLkUrl] = useState<string | null>(null);
 
   const streamId = params?.id;
 
@@ -64,6 +66,27 @@ export default function StreamPage() {
       return res.json();
     },
   });
+
+  const { data: lkConfig } = useQuery<{ configured: boolean; url: string }>({
+    queryKey: ["/api/livekit/config"],
+  });
+
+  const isHost = stream?.hostId === user?.id;
+
+  useEffect(() => {
+    if (!streamId || !user || !lkConfig?.configured) return;
+    (async () => {
+      try {
+        const res = await apiRequest("POST", "/api/livekit/token", {
+          streamId,
+        });
+        const data = await res.json();
+        setLkToken(data.token);
+        setLkUrl(data.url);
+      } catch {
+      }
+    })();
+  }, [streamId, user, lkConfig?.configured]);
 
   const sendGiftMutation = useMutation({
     mutationFn: async (data: { giftId: string; receiverId: string; quantity: number }) => {
@@ -232,16 +255,37 @@ export default function StreamPage() {
     );
   }
 
+  const showLiveKit = lkConfig?.configured && lkToken && lkUrl;
+
   return (
     <div className="min-h-screen bg-background flex flex-col lg:flex-row">
       <div className="flex-1 flex flex-col">
         <div className="relative aspect-video bg-black">
-          <img
-            src={stream.thumbnailUrl || "/images/stream1.png"}
-            alt={stream.title}
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+          {showLiveKit ? (
+            <LiveKitStream
+              token={lkToken}
+              serverUrl={lkUrl}
+              isHost={isHost}
+            />
+          ) : (
+            <>
+              <img
+                src={stream.thumbnailUrl || "/images/stream1.png"}
+                alt={stream.title}
+                className="w-full h-full object-cover"
+              />
+              {!lkConfig?.configured && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+                  <div className="text-center text-white/70 px-4">
+                    <VideoOff className="w-10 h-10 mx-auto mb-2 opacity-60" />
+                    <p className="text-sm font-medium">LiveKit not configured</p>
+                    <p className="text-xs mt-1">Add LIVEKIT_URL, LIVEKIT_API_KEY, and LIVEKIT_API_SECRET to enable live video</p>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
 
           <div className="absolute top-4 left-4 flex items-center gap-2">
             <Button variant="ghost" size="icon" onClick={() => setLocation("/")} className="bg-black/40 text-white" data-testid="button-back">
@@ -294,7 +338,7 @@ export default function StreamPage() {
                 <p className="text-white/70 text-xs">{stream.host?.displayName}</p>
               </div>
               <div className="flex gap-2">
-                {stream.hostId === user?.id ? (
+                {isHost ? (
                   <Button
                     size="sm"
                     variant="destructive"
@@ -315,9 +359,6 @@ export default function StreamPage() {
                       data-testid="button-add-friend"
                     >
                       <UserPlus className="w-4 h-4" />
-                    </Button>
-                    <Button size="icon" variant="ghost" className="bg-black/40 text-white" data-testid="button-join-video">
-                      <Video className="w-4 h-4" />
                     </Button>
                   </>
                 )}

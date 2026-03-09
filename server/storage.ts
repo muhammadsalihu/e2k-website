@@ -2,10 +2,10 @@ import { eq, and, or, desc, ilike } from "drizzle-orm";
 import { db } from "./db";
 import {
   users, streams, gifts, giftTransactions, coinPackages,
-  subscriptionPlans, friends, streamCoHosts, chatMessages,
+  subscriptionPlans, friends, channelSubscriptions, streamCoHosts, chatMessages,
   type User, type InsertUser, type Stream, type Gift,
   type GiftTransaction, type CoinPackage, type SubscriptionPlan,
-  type Friend, type StreamCoHost, type ChatMessage
+  type Friend, type ChannelSubscription, type StreamCoHost, type ChatMessage
 } from "@shared/schema";
 
 export interface IStorage {
@@ -38,6 +38,11 @@ export interface IStorage {
   updateFriendStatus(id: string, status: "accepted" | "rejected"): Promise<Friend | undefined>;
 
   searchUsers(query: string): Promise<User[]>;
+
+  getChannelSubscription(subscriberId: string, channelId: string): Promise<ChannelSubscription | undefined>;
+  createChannelSubscription(subscriberId: string, channelId: string): Promise<ChannelSubscription>;
+  deleteChannelSubscription(subscriberId: string, channelId: string): Promise<void>;
+  getChannelSubscribers(channelId: string): Promise<ChannelSubscription[]>;
 
   addCoHost(streamId: string, userId: string): Promise<StreamCoHost>;
   getCoHosts(streamId: string): Promise<(StreamCoHost & { user?: User })[]>;
@@ -198,6 +203,28 @@ export class DatabaseStorage implements IStorage {
         ilike(users.displayName, `%${query}%`)
       )
     ).limit(20);
+  }
+
+  async getChannelSubscription(subscriberId: string, channelId: string): Promise<ChannelSubscription | undefined> {
+    const [sub] = await db.select().from(channelSubscriptions).where(
+      and(eq(channelSubscriptions.subscriberId, subscriberId), eq(channelSubscriptions.channelId, channelId))
+    );
+    return sub;
+  }
+
+  async createChannelSubscription(subscriberId: string, channelId: string): Promise<ChannelSubscription> {
+    const [sub] = await db.insert(channelSubscriptions).values({ subscriberId, channelId }).returning();
+    return sub;
+  }
+
+  async deleteChannelSubscription(subscriberId: string, channelId: string): Promise<void> {
+    await db.delete(channelSubscriptions).where(
+      and(eq(channelSubscriptions.subscriberId, subscriberId), eq(channelSubscriptions.channelId, channelId))
+    );
+  }
+
+  async getChannelSubscribers(channelId: string): Promise<ChannelSubscription[]> {
+    return db.select().from(channelSubscriptions).where(eq(channelSubscriptions.channelId, channelId));
   }
 
   async addCoHost(streamId: string, userId: string): Promise<StreamCoHost> {
