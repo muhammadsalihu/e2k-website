@@ -4,7 +4,7 @@ import {
   Code2, Wifi, Brain, GraduationCap, ArrowRight, ChevronDown,
   Globe, Smartphone, Shield, Cpu, BookOpen, Users, Award,
   CheckCircle, Star, Menu, X, Zap, TrendingUp, Layers, Mail,
-  Phone, MapPin, ExternalLink, Play, MessageSquare
+  Phone, MapPin, ExternalLink, Play, MessageSquare, Palette, Film
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -50,7 +50,7 @@ const SERVICES = [
     glow: "hsl(35 100% 55% / 0.3)",
     title: "Tech Education",
     description: "From beginners to professionals — we offer hands-on training programs in coding, networking, AI, and more, empowering the next generation of tech talent.",
-    features: ["Coding Bootcamps", "Corporate Training", "1-on-1 Mentorship", "Online Courses"],
+    features: ["Coding Bootcamps", "Graphic Design", "Video Editing", "1-on-1 Mentorship", "Online Courses"],
   },
 ];
 
@@ -75,6 +75,8 @@ const TRAINING_PROGRAMS = [
   { icon: Shield, title: "Cybersecurity", duration: "8 Weeks", level: "Intermediate", color: "text-red-400" },
   { icon: Smartphone, title: "Mobile App Dev", duration: "10 Weeks", level: "Beginner to Pro", color: "text-orange-400" },
   { icon: Globe, title: "Digital Marketing & SEO", duration: "4 Weeks", level: "All Levels", color: "text-pink-400" },
+  { icon: Palette, title: "Graphic Design", duration: "6 Weeks", level: "All Levels", color: "text-yellow-400" },
+  { icon: Film, title: "Video Editing", duration: "4 Weeks", level: "All Levels", color: "text-cyan-400" },
 ];
 
 const PROJECTS = [
