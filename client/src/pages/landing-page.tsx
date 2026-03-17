@@ -88,8 +88,8 @@ const PROJECTS = [
 
 const TESTIMONIALS = [
   { name: "Kadiri Adaba", role: "CEO, Kadaba Enterprise", text: "E2k Tech Ventures transformed our idea into a world-class product. Their team is exceptional, and the results speak for themselves.", rating: 5, photo: "/kadiri-adaba.png" },
-  { name: "Emeka Okafor", role: "CTO, FinEdge Ltd", text: "The AI integration they built cut our customer support costs by 60%. Absolutely phenomenal work and professionalism.", rating: 5, photo: null },
-  { name: "James Miller", role: "Director, TechSchool Africa", text: "Their training program produced 40 certified developers for us. The quality of instruction is unmatched in the industry.", rating: 5, photo: null },
+  { name: "Emeka Okafor", role: "CTO, FinEdge Ltd", text: "The AI integration they built cut our customer support costs by 60%. Absolutely phenomenal work and professionalism.", rating: 5, photo: "/testimonial-2.jpg" },
+  { name: "James Miller", role: "Director, TechSchool Africa", text: "Their training program produced 40 certified developers for us. The quality of instruction is unmatched in the industry.", rating: 5, photo: "/testimonial-3.png" },
 ];
 
 function Navbar() {
