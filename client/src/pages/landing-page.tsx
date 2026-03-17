@@ -87,9 +87,9 @@ const PROJECTS = [
 ];
 
 const TESTIMONIALS = [
-  { name: "Sarah Chen", role: "CEO, StartupHub", text: "E2k Tech Ventures transformed our idea into a world-class product. Their team is exceptional, and the results speak for themselves.", rating: 5 },
-  { name: "Emeka Okafor", role: "CTO, FinEdge Ltd", text: "The AI integration they built cut our customer support costs by 60%. Absolutely phenomenal work and professionalism.", rating: 5 },
-  { name: "James Miller", role: "Director, TechSchool Africa", text: "Their training program produced 40 certified developers for us. The quality of instruction is unmatched in the industry.", rating: 5 },
+  { name: "Kadiri Adaba", role: "CEO, Kadaba Enterprise", text: "E2k Tech Ventures transformed our idea into a world-class product. Their team is exceptional, and the results speak for themselves.", rating: 5, photo: "/kadiri-adaba.png" },
+  { name: "Emeka Okafor", role: "CTO, FinEdge Ltd", text: "The AI integration they built cut our customer support costs by 60%. Absolutely phenomenal work and professionalism.", rating: 5, photo: null },
+  { name: "James Miller", role: "Director, TechSchool Africa", text: "Their training program produced 40 certified developers for us. The quality of instruction is unmatched in the industry.", rating: 5, photo: null },
 ];
 
 function Navbar() {
@@ -625,9 +625,17 @@ function TestimonialsSection() {
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed mb-5 italic">"{t.text}"</p>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-white font-bold text-sm">
-                  {t.name[0]}
-                </div>
+                {t.photo ? (
+                  <img
+                    src={t.photo}
+                    alt={t.name}
+                    className="w-11 h-11 rounded-full object-cover object-top border-2 border-primary/30"
+                  />
+                ) : (
+                  <div className="w-11 h-11 rounded-full gradient-primary flex items-center justify-center text-white font-bold text-sm shrink-0">
+                    {t.name[0]}
+                  </div>
+                )}
                 <div>
                   <p className="font-semibold text-sm">{t.name}</p>
                   <p className="text-xs text-muted-foreground">{t.role}</p>
