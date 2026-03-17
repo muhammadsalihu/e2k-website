@@ -72,7 +72,7 @@ export default function ContactPage() {
             Back to Home
           </button>
           <div className="h-4 w-px bg-border" />
-          <img src="/e2k-logo.png" alt="E2k Tech Ventures" className="h-10 w-auto object-contain" />
+          <img src="/e2k-logo-transparent.png" alt="E2k Tech Ventures" className="h-10 w-auto object-contain" />
         </div>
 
         <div className="grid lg:grid-cols-2 gap-12 items-start">
