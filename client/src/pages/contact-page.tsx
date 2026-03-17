@@ -32,8 +32,8 @@ const SERVICES_OPTIONS = [
 
 const CONTACT_INFO = [
   { icon: Mail, label: "Email", value: "hello@e2ktechventures.com", color: "text-blue-400" },
-  { icon: Phone, label: "Phone", value: "+1 (555) E2K-TECH", color: "text-emerald-400" },
-  { icon: MapPin, label: "Location", value: "Africa & Beyond", color: "text-violet-400" },
+  { icon: Phone, label: "Phone", value: "+234 8140096517", color: "text-emerald-400" },
+  { icon: MapPin, label: "Location", value: "Road B1 House 13, Pentville Estate, Lokogoma", color: "text-violet-400" },
 ];
 
 export default function ContactPage() {
