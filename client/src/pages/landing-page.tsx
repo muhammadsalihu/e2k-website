@@ -16,7 +16,7 @@ const NAV_ITEMS = [
   { label: "About", href: "#about" },
   { label: "AI", href: "#ai" },
   { label: "Training", href: "#training" },
-  { label: "Projects", href: "#projects" },
+  { label: "Projects", href: "/portfolio" },
 ];
 
 const SERVICES = [
@@ -124,7 +124,7 @@ function Navbar() {
           {NAV_ITEMS.map((item) => (
             <button
               key={item.href}
-              onClick={() => scrollTo(item.href)}
+              onClick={() => item.href.startsWith("/") ? setLocation(item.href) : scrollTo(item.href)}
               className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted/50"
             >
               {item.label}
@@ -155,7 +155,7 @@ function Navbar() {
           {NAV_ITEMS.map((item) => (
             <button
               key={item.href}
-              onClick={() => scrollTo(item.href)}
+              onClick={() => { setMenuOpen(false); item.href.startsWith("/") ? setLocation(item.href) : scrollTo(item.href); }}
               className="w-full text-left px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors border-b border-border/30"
             >
               {item.label}
@@ -547,6 +547,7 @@ function TrainingSection() {
 }
 
 function ProjectsSection() {
+  const [, setLocation] = useLocation();
   return (
     <section id="projects" className="py-24 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
@@ -588,6 +589,18 @@ function ProjectsSection() {
               </div>
             </motion.div>
           ))}
+        </div>
+
+        <div className="text-center mt-10">
+          <Button
+            onClick={() => setLocation("/portfolio")}
+            variant="outline"
+            className="border-primary/40 text-primary hover:bg-primary/10 font-semibold px-8 h-11"
+            data-testid="button-see-portfolio"
+          >
+            See Our Projects
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
         </div>
       </div>
     </section>
