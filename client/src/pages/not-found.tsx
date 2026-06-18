@@ -1,7 +1,6 @@
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
-import { E2kLogo } from "@/components/e2k-logo";
 
 export default function NotFound() {
   const [, setLocation] = useLocation();
@@ -9,7 +8,7 @@ export default function NotFound() {
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="text-center max-w-md">
         <div className="flex justify-center mb-6 animate-bounce">
-          <E2kLogo size="xl" variant="icon" />
+          <img src="/e2k-logo.png" alt="E2k Tech Ventures" className="h-24 w-auto object-contain" />
         </div>
         <h1 className="text-7xl font-black text-gradient mb-4">404</h1>
         <h2 className="text-2xl font-bold mb-3">Houston, we have a problem!</h2>

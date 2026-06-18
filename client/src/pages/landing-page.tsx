@@ -9,7 +9,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
-import { E2kLogo } from "@/components/e2k-logo";
 
 const NAV_ITEMS = [
   { label: "Services", href: "#services" },
@@ -117,7 +116,7 @@ function Navbar() {
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 sm:h-18 flex items-center justify-between">
         <a href="/" className="flex items-center gap-2 shrink-0" data-testid="link-logo">
-          <E2kLogo size="sm" variant="full" />
+          <img src="/e2k-logo.png" alt="E2k Tech Ventures" className="h-10 w-auto object-contain" />
         </a>
 
         <nav className="hidden md:flex items-center gap-1">
@@ -385,7 +384,7 @@ function AboutSection() {
               <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/20 to-accent/20 blur-2xl scale-110" />
               <div className="relative rounded-3xl border border-border/50 bg-card p-8 max-w-sm">
                 <div className="flex justify-center mb-6 animate-float-slow">
-                  <E2kLogo size="xl" variant="icon" />
+                  <img src="/e2k-logo.png" alt="E2k Tech Ventures" className="h-24 w-auto object-contain" />
                 </div>
                 <div className="text-center">
                   <h3 className="text-2xl font-black mb-1 text-gradient-hero">E2k Tech Ventures</h3>
@@ -680,7 +679,7 @@ function CTASection() {
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-72 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
           <div className="relative z-10">
             <div className="flex justify-center mb-6">
-              <E2kLogo size="lg" variant="full" />
+              <img src="/e2k-logo.png" alt="E2k Tech Ventures" className="h-20 w-auto object-contain" />
             </div>
             <h2 className="text-4xl sm:text-5xl font-black tracking-tight mb-4">
               Ready to Build Something <span className="text-gradient">Amazing?</span>
@@ -721,7 +720,7 @@ function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
           <div className="lg:col-span-1">
-            <div className="mb-3"><E2kLogo size="sm" variant="full" /></div>
+            <img src="/e2k-logo.png" alt="E2k Tech Ventures" className="h-12 w-auto object-contain mb-3" />
             <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
               Building tomorrow's digital world — one project, one lesson, one innovation at a time.
             </p>

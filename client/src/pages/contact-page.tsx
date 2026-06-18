@@ -11,7 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Mail, Phone, MapPin, Send, CheckCircle, Code2, Brain, Wifi, GraduationCap } from "lucide-react";
 import { motion } from "framer-motion";
-import { E2kLogo } from "@/components/e2k-logo";
 
 const contactSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -73,7 +72,7 @@ export default function ContactPage() {
             Back to Home
           </button>
           <div className="h-4 w-px bg-border" />
-          <E2kLogo size="sm" variant="full" />
+          <img src="/e2k-logo.png" alt="E2k Tech Ventures" className="h-10 w-auto object-contain" />
         </div>
 
         <div className="grid lg:grid-cols-2 gap-12 items-start">

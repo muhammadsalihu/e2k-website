@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ExternalLink } from "lucide-react";
-import { E2kLogo } from "@/components/e2k-logo";
 
 const PROJECTS = [
   {
@@ -60,7 +59,7 @@ export default function PortfolioPage() {
             Back to Home
           </button>
           <div className="h-4 w-px bg-border" />
-          <E2kLogo size="sm" variant="full" />
+          <img src="/e2k-logo.png" alt="E2k Tech Ventures" className="h-10 w-auto object-contain" />
         </div>
       </header>
 
